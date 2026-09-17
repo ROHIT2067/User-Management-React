@@ -7,6 +7,7 @@ import AuthLayout from "../../components/AuthLayout/AuthLayout";
 import { toast } from "sonner";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
 import { Eye, EyeOff } from "lucide-react";
+import MESSAGES from "../../../constants/messages";
 
 export default function LoginPage() {
   useDocumentTitle("Sign In")
@@ -23,7 +24,7 @@ export default function LoginPage() {
     e.preventDefault();
 
     if (!form.email.trim()) {
-      toast.error("Email is required");
+      toast.error(MESSAGES.EMAIL_REQUIRED);
       return;
     }
 
@@ -39,7 +40,7 @@ export default function LoginPage() {
     }
 
     if (form.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(MESSAGES.PASSWORD_MIN_LENGTH);
       return;
     }
 

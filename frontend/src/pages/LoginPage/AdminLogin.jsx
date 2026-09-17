@@ -5,6 +5,8 @@ import { loginSuccessful } from "../../features/auth/authSlice";
 import { toast } from "sonner";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
 import { Eye, EyeOff } from "lucide-react";
+import MESSAGES from "../../../constants/messages";
+import axiosInstance from "../../utils/axios";
 
 export default function AdminLogin() {
   useDocumentTitle("Admin Login")
@@ -25,7 +27,7 @@ export default function AdminLogin() {
     e.preventDefault();
 
     if (!form.email.trim()) {
-      toast.error("Email is required");
+      toast.error(MESSAGES.EMAIL_REQUIRED);
       return;
     }
 
@@ -41,28 +43,21 @@ export default function AdminLogin() {
     }
 
     if (form.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(MESSAGES.PASSWORD_MIN_LENGTH);
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:3000/admin/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const res = await axiosInstance.post(
+        "/admin/login",
+        {
           email: form.email.trim().toLowerCase(),
           password: form.password,
-        }),
-      });
+        },
+        { skipAuthRefresh: true }
+      );
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        return toast.error(errorData.message || "Admin login failed. Check credentials.");
-      }
-
-      const data = await res.json();
+      const data = res.data;
       const { user, accessToken } = data;
 
       console.log("admin access token received : ", accessToken);
@@ -75,6 +70,9 @@ export default function AdminLogin() {
       navigate("/admin/dashboard");
     } catch (error) {
       console.log("Error occurred while logging in:", error);
+      if (error.response) {
+        return toast.error(error.response.data?.message || "Admin login failed. Check credentials.");
+      }
       toast.error("Admin login failed. Check credentials.");
     }
   };

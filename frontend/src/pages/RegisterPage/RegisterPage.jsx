@@ -6,6 +6,7 @@ import axiosInstance from "../../utils/axios";
 import AuthLayout from "../../components/AuthLayout/AuthLayout";
 import { toast } from "sonner";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
+import MESSAGES from "../../../constants/messages";
 import { Eye, EyeOff } from "lucide-react";
 
 
@@ -38,17 +39,17 @@ export default function RegisterPage() {
     }
 
     if (form.name.trim().length < 2) {
-      toast.error("Name must be at least 2 characters");
+      toast.error(MESSAGES.NAME_MIN_LENGTH);
       return;
     }
 
     if (form.name.trim().length > 50) {
-      toast.error("Name cannot exceed 50 characters");
+      toast.error(MESSAGES.NAME_MAX_LENGTH);
       return;
     }
 
     if (!form.email.trim()) {
-      toast.error("Email is required");
+      toast.error(MESSAGES.EMAIL_REQUIRED);
       return;
     }
 
@@ -64,7 +65,7 @@ export default function RegisterPage() {
     }
 
     if (form.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(MESSAGES.PASSWORD_MIN_LENGTH);
       return;
     }
 

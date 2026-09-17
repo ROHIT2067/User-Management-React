@@ -4,6 +4,7 @@ import axiosInstance from "../../utils/axios";
 import { loginSuccessful } from "../../features/auth/authSlice";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import MESSAGES from "../../../constants/messages";
 
 export default function UploadImage() {
   const dispatch = useDispatch();
@@ -19,7 +20,7 @@ export default function UploadImage() {
     const allowedExtensions = /\.(jpeg|jpg|png|gif|webp)$/i;
 
     if (!allowedTypes.includes(file.type) || !allowedExtensions.test(file.name)) {
-      toast.error("Only image files (JPEG, JPG, PNG, GIF, WEBP) are allowed. PDF and non-image files are not permitted.");
+      toast.error(MESSAGES.INVALID_IMAGE_TYPE);
       return;
     }
 

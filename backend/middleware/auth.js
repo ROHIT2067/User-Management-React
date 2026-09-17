@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js';
+import env from '../config/env.js';
 
-const secret = process.env.JWT_SECRET || process.env.SECRET || 'mysecret';
+const secret = env.JWT_SECRET;
 
 export const verifyToken = async (req, res, next) => {
   try {

@@ -1,9 +1,10 @@
 import axios from "axios";
 import { store } from "../store";
 import { logout, updateAccessToken } from "../features/auth/authSlice";
+import STATUS_CODES from "../../constants/statusCodes";
 
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true,
 });
 
@@ -26,16 +27,21 @@ axiosInstance.interceptors.response.use(
     const originalRequest = error.config;
 
     if (
-      (error.response?.status === 401 || error.response?.status === 403) &&
-      !originalRequest._retry
+      (error.response?.status === STATUS_CODES.UNAUTHORIZED ||
+        error.response?.status === STATUS_CODES.FORBIDDEN) &&
+      !originalRequest.skipAuthRefresh &&
+      !originalRequest._retry     //prevents an infinite loop
     ) {
       originalRequest._retry = true;
 
       try {
-        const res = await axios.post(
-          "http://localhost:3000/user/refresh",
+        const res = await axiosInstance.post(
+          "/user/refresh",
           {},
-          { withCredentials: true }
+          {
+            withCredentials: true,
+            skipAuthRefresh: true,
+          }   //allows the browser to send the refresh-token cookie with cross-origin requests
         );
 
         const newAccessToken = res.data.accessToken;

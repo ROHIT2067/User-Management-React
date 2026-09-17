@@ -6,6 +6,7 @@ import { loginSuccessful } from "../../features/auth/authSlice";
 import Navbar from "../navbar/Navbar";
 import UploadImage from "./UploadImage";
 import { toast } from "sonner";
+import MESSAGES from "../../../constants/messages";
 
 export default function EditUserProfile() {
   const dispatch = useDispatch();
@@ -43,17 +44,17 @@ export default function EditUserProfile() {
     }
 
     if (formData.name.trim().length < 2) {
-      toast.error("Name must be at least 2 characters");
+      toast.error(MESSAGES.NAME_MIN_LENGTH);
       return;
     }
 
     if (formData.name.trim().length > 50) {
-      toast.error("Name cannot exceed 50 characters");
+      toast.error(MESSAGES.NAME_MAX_LENGTH);
       return;
     }
 
     if (!formData.email.trim()) {
-      toast.error("Email is required");
+      toast.error(MESSAGES.EMAIL_REQUIRED);
       return;
     }
 

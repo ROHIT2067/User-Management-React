@@ -9,6 +9,7 @@ import {
   selectUserById,
 } from "../../features/users/usersSlice";
 import { toast } from "sonner";
+import MESSAGES from "../../../constants/messages";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 export default function EditUser() {
@@ -81,17 +82,17 @@ export default function EditUser() {
     }
 
     if (formData.name.trim().length < 2) {
-      toast.error("Name must be at least 2 characters");
+      toast.error(MESSAGES.NAME_MIN_LENGTH);
       return;
     }
 
     if (formData.name.trim().length > 50) {
-      toast.error("Name cannot exceed 50 characters");
+      toast.error(MESSAGES.NAME_MAX_LENGTH);
       return;
     }
 
     if (!formData.email.trim()) {
-      toast.error("Email is required");
+      toast.error(MESSAGES.EMAIL_REQUIRED);
       return;
     }
 

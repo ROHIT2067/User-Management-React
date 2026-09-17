@@ -1,14 +1,11 @@
 import mongoose from 'mongoose';
 import User from './models/userModel.js';
 import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import env from './config/env.js';
 
 const seed = async () => {
   try {
-    const mongoUri = process.env.MONGO_URI;
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(env.MONGO_URI);
     console.log("Connected to MongoDB");
 
     const email = "admin@gamil.com";

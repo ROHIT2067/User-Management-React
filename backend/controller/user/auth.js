@@ -1,19 +1,14 @@
-import User from '../../models/userModel.js';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-
-const secret = process.env.JWT_SECRET || process.env.SECRET || 'mysecret';
-const refreshSecret = process.env.REFRESH_TOKEN_SECRET || secret;
-
-
-
-function generateRefreshToken(userId) {
-  return jwt.sign({ id: userId }, refreshSecret, { expiresIn: '7d' });
-}
-
-function generateAccessToken(userId) {
-  return jwt.sign({ id: userId }, secret, { expiresIn: '15m' });
-}
+import {
+  logOutUser as logOutUserService,
+  loginUser as loginUserService,
+  refreshAccessToken as refreshAccessTokenService,
+  registerUser as registerUserService,
+  updateUser as updateUserService,
+  uploadImage as uploadImageService,
+} from '../../service/userService.js';
+import env from '../../config/env.js';
+import STATUS_CODES from '../../constants/statusCodes.js';
+import MESSAGES from '../../constants/messages.js';
 
 const registerUser = async (req, res) => {
 
@@ -21,81 +16,62 @@ const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res.status(400).json({
+    return res.status(STATUS_CODES.BAD_REQUEST).json({
       message: 'Name, email, and password are required',
     });
   }
 
   if (name.trim().length < 2) {
-    return res.status(400).json({
+    return res.status(STATUS_CODES.BAD_REQUEST).json({
       message: 'Name must be at least 2 characters long',
     });
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return res.status(400).json({
+    return res.status(STATUS_CODES.BAD_REQUEST).json({
       message: 'Please provide a valid email address',
     });
   }
 
   if (password.length < 6) {
-    return res.status(400).json({
+    return res.status(STATUS_CODES.BAD_REQUEST).json({
       message: 'Password must be at least 6 characters long',
     });
   }
 
-  const exists = await User.findOne({
-    email: email.trim().toLowerCase(),
-  });
+  const result = await registerUserService(name, email, password);
 
-  if (exists) {
-    return res.status(400).json({
+  if (result.outcome === 'user_exists') {
+    return res.status(STATUS_CODES.BAD_REQUEST).json({
       message: 'User already exists',
     });
   }
 
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-  const saveUser = new User({
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    password: hashedPassword,
-  });
-
-  await saveUser.save();
-
-  const accessToken = generateAccessToken(saveUser._id);
-  const refreshToken = generateRefreshToken(saveUser._id);
-
-  saveUser.refreshToken = refreshToken;
-  await saveUser.save();
-
-  res.cookie('jwt', refreshToken, {
+  res.cookie('jwt', result.refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'lax',
+    secure: env.NODE_ENV === 'production',
+    sameSite: env.NODE_ENV === 'production' ? 'None' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
-  return res.status(201).json({
+  return res.status(STATUS_CODES.CREATED).json({
     message: 'User registered successfully',
-    accessToken,
+    accessToken: result.accessToken,
     user: {
-      id: saveUser._id,
-      name: saveUser.name,
-      email: saveUser.email,
+      id: result.user._id,
+      name: result.user.name,
+      email: result.user.email,
     },
   });
   } catch (error) {
     console.log(error);
     if (error.code === 11000) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         message: "User already exists",
       });
     }
-    return res.status(400).json({
+    return res.status(STATUS_CODES.BAD_REQUEST).json({
       message: "internal server error",
       error: error.message
     });
@@ -108,49 +84,39 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !email.trim() || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: 'Email and password are required' });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      return res.status(400).json({ message: 'Please provide a valid email address' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: 'Please provide a valid email address' });
     }
 
-    const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
-    if (!existingUser) {
-      return res.status(400).json({ message: 'Invalid email or password' });
+    const result = await loginUserService(email, password);
+    if (result.outcome === 'invalid_credentials') {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: 'Invalid email or password' });
     }
 
-    const isValidPassword = await bcrypt.compare(password, existingUser.password);
-    if (!isValidPassword) {
-      return res.status(400).json({ message: 'Invalid email or password' });
-    }
-
-    const accessToken = generateAccessToken(existingUser._id);
-    const refreshToken = generateRefreshToken(existingUser._id);
-
-    existingUser.refreshToken = refreshToken;
-    await existingUser.save();
-
-    res.cookie('jwt', refreshToken, {
+    res.cookie('jwt', result.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'lax',
+      secure: env.NODE_ENV === 'production',
+      sameSite: env.NODE_ENV === 'production' ? 'None' : 'lax',
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return res.status(200).json({
+    return res.status(STATUS_CODES.OK).json({
       message: 'Login successful',
-      accessToken,
+      accessToken: result.accessToken,
       user: {
-        id: existingUser._id,
-        name: existingUser.name,
-        email: existingUser.email,
+        id: result.user._id,
+        name: result.user.name,
+        email: result.user.email,
+        profileImage: result.user.profileImage || null,
       },
     });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: 'Internal server error', error: error.message });
+    return res.status(STATUS_CODES.SERVER_ERROR).json({ message: 'Internal server error', error: error.message });
   }
 };
 
@@ -160,33 +126,31 @@ const refreshAccessToken = async (req, res) => {
     const refreshToken = req.cookies?.jwt;
 
     if (!refreshToken) {
-      return res.status(401).json({ message: 'Refresh token cookie missing' });
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({ message: 'Refresh token cookie missing' });
     }
 
-    const decoded = jwt.verify(refreshToken, refreshSecret);
-    const user = await User.findById(decoded.id);
+    const result = await refreshAccessTokenService(refreshToken);
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    if (result.outcome === 'user_not_found') {
+      return res.status(STATUS_CODES.NOT_FOUND).json({ message: 'User not found' });
     }
 
-    if (user.refreshToken !== refreshToken) {
-      return res.status(403).json({ message: 'Token mismatch' });
+    if (result.outcome === 'token_mismatch') {
+      return res.status(STATUS_CODES.FORBIDDEN).json({ message: 'Token mismatch' });
     }
 
-    const newAccessToken = generateAccessToken(user._id);
-
-    return res.status(200).json({
-      accessToken: newAccessToken,
+    return res.status(STATUS_CODES.OK).json({
+      accessToken: result.accessToken,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
+        id: result.user._id,
+        name: result.user.name,
+        email: result.user.email,
+        profileImage: result.user.profileImage || null,
       },
     });
   } catch (error) {
     console.log(error);
-    return res.status(403).json({ message: 'Invalid or expired refresh token' });
+    return res.status(STATUS_CODES.FORBIDDEN).json({ message: 'Invalid or expired refresh token' });
   }
 };
 
@@ -195,53 +159,44 @@ const logOutUser = async (req, res) => {
     const refreshToken = req.cookies?.jwt;
 
     if (!refreshToken) {
-      return res.sendStatus(204);
+      return res.sendStatus(STATUS_CODES.NO_CONTENT);
     }
 
-    const user = await User.findOne({ refreshToken });
-
-    if (user) {
-      user.refreshToken = null;
-      await user.save();
-    }
+    await logOutUserService(refreshToken);
 
     res.clearCookie('jwt', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'lax',
+      secure: env.NODE_ENV === 'production',
+      sameSite: env.NODE_ENV === 'production' ? 'None' : 'lax',
     });
 
-    return res.status(200).json({ message: 'User logged out successfully' });
+    return res.status(STATUS_CODES.OK).json({ message: 'User logged out successfully' });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: 'Logout unsuccessful' });
+    return res.status(STATUS_CODES.SERVER_ERROR).json({ message: 'Logout unsuccessful' });
   }
 };
 
 const uploadImage = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'No image file provided' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: 'No image file provided' });
     }
 
     const email = req.body.email;
     if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: MESSAGES.EMAIL_REQUIRED });
     }
 
     const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
 
-    const result = await User.findOneAndUpdate(
-      { email },
-      { profileImage: imageUrl },
-      { new: true }
-    );
+    const result = await uploadImageService(email, imageUrl);
 
     if (!result) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(STATUS_CODES.NOT_FOUND).json({ message: 'User not found' });
     }
 
-    return res.status(200).json({
+    return res.status(STATUS_CODES.OK).json({
       message: 'Profile image uploaded successfully',
       imageUrl,
       user: {
@@ -253,7 +208,7 @@ const uploadImage = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: 'Server error while saving image' });
+    return res.status(STATUS_CODES.SERVER_ERROR).json({ message: 'Server error while saving image' });
   }
 };
 
@@ -264,46 +219,32 @@ const updateUser = async (req, res) => {
     console.log("Update user request:", { name, email, id: userId });
 
     if (!name || !email) {
-      return res.status(400).json({ message: "Name and email are required" });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: "Name and email are required" });
     }
 
     if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: "User ID is required" });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: "Invalid email format" });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: "Invalid email format" });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    const result = await updateUserService(userId, name, email);
+    if (result.outcome === 'user_not_found') {
+      return res.status(STATUS_CODES.NOT_FOUND).json({ message: "User not found" });
     }
-
-    const existingUser = await User.findOne({ 
-      email: email.trim().toLowerCase(),
-      _id: { $ne: userId }
-    });
     
-    if (existingUser) {
-      return res.status(400).json({ message: "Email is already in use" });
+    if (result.outcome === 'email_in_use') {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ message: "Email is already in use" });
     }
 
-    const updated = await User.findByIdAndUpdate(
-      userId,
-      {
-        $set: {
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-        },
-      },
-      { new: true }
-    );
+    const updated = result.user;
 
     console.log("User updated successfully:", updated._id);
 
-    res.status(200).json({ 
+    res.status(STATUS_CODES.OK).json({
       message: "Profile updated successfully", 
       user: {
         id: updated._id,
@@ -316,7 +257,7 @@ const updateUser = async (req, res) => {
   } catch (error) {
     console.error("Update user error:", error.message);
     console.error("Stack:", error.stack);
-    return res.status(500).json({ 
+    return res.status(STATUS_CODES.SERVER_ERROR).json({
       message: "Internal server error",
       error: error.message 
     });

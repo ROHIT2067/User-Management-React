@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import MESSAGES from "../../../constants/messages";
 import axiosInstance from "../../utils/axios";
 import { X, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
@@ -26,22 +27,22 @@ export default function NewUserModal() {
     console.log("admin is trying to add new user");
 
     if (!formData.name.trim()) {
-      toast.error("Full Name is required");
+      toast.error(MESSAGES.FULL_NAME_REQUIRED);
       return;
     }
 
     if (formData.name.trim().length < 2) {
-      toast.error("Name must be at least 2 characters");
+      toast.error(MESSAGES.NAME_MIN_LENGTH);
       return;
     }
 
     if (formData.name.trim().length > 50) {
-      toast.error("Name cannot exceed 50 characters");
+      toast.error(MESSAGES.NAME_MAX_LENGTH);
       return;
     }
 
     if (!formData.email.trim()) {
-      toast.error("Email address is required");
+      toast.error(MESSAGES.EMAIL_ADDRESS_REQUIRED);
       return;
     }
 
@@ -57,7 +58,7 @@ export default function NewUserModal() {
     }
 
     if (formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(MESSAGES.PASSWORD_MIN_LENGTH);
       return;
     }
 

@@ -6,10 +6,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
-import dotenv from 'dotenv';
 import connectDB from './config/db.js';
+import env from './config/env.js';
 
-dotenv.config();
 connectDB();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,7 +28,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 app.use('/user', userRoutes);
 app.use('/admin', adminRoutes);
 
-const port = process.env.PORT || 5000;
+const port = env.PORT;
 app.listen(port, () => {
   console.log(`server has started on port http://localhost:${port}`);
 });

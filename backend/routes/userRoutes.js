@@ -2,14 +2,16 @@ import express from 'express';
 import { registerUser, loginUser, refreshAccessToken, logOutUser, uploadImage, updateUser } from '../controller/user/auth.js';
 import { verifyToken } from '../middleware/auth.js';
 import upload from '../middleware/multer.js';
+import STATUS_CODES from '../constants/statusCodes.js';
+import MESSAGES from '../constants/messages.js';
 
 const router = express.Router();
 
 const handleUpload = (req, res, next) => {
   upload.single('image')(req, res, (err) => {
     if (err) {
-      return res.status(400).json({ 
-        message: err.message || 'Only image files (JPEG, JPG, PNG, GIF, WEBP) are allowed. PDF and non-image files are not permitted.' 
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        message: err.message || MESSAGES.INVALID_IMAGE_TYPE
       });
     }
     next();
